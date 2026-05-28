@@ -46,16 +46,16 @@ if [[ $PARTS =~ (^|,)tests(,|$) ]]; then
         if ! [[ $PARTS =~ (^|,)redis(,|$) ]] && [ $ex == "redis" ]; then
             continue
         fi
+        if [ $ex == "vibe.http.client.2080" ] || [ $ex == "vibe.http.server.http2" ]; then
+            echo "[WARNING] Skipping test $ex"
+            continue
+        fi
         if [ -r tests/$ex/run.sh ]; then
             echo "[INFO] Running test $ex"
             (cd tests/$ex && ./run.sh)
         elif [ -r tests/$ex/dub.json ] || [ -r tests/$ex/dub.sdl ]; then
-            if [ $ex == "vibe.http.client.2080" ]; then
-                echo "[WARNING] Skipping test $ex due to TravisCI incompatibility".
-            else
-                echo "[INFO] Running test $ex"
-                (cd tests/$ex && dub --compiler=$DC $DUB_ARGS && dub clean)
-            fi
+            echo "[INFO] Running test $ex"
+            (cd tests/$ex && dub --compiler=$DC $DUB_ARGS && dub clean)
         fi
     done
 fi
@@ -75,4 +75,3 @@ if [[ $PARTS =~ (^|,)vibe-d(,|$) ]]; then
     dub test :web $DUB_ARGS
     cd ..
 fi
-

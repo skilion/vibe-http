@@ -6,6 +6,10 @@ import vibe.core.core : exitEventLoop, runApplication, runTask, sleep;
 import vibe.http.client;
 import vibe.http.server;
 import vibe.stream.operations : readAllUTF8;
+import std.algorithm : find;
+import std.range.primitives : front;
+import std.socket : AddressFamily;
+import std.conv : to;
 
 void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
@@ -23,19 +27,20 @@ void main()
     };
 
 	auto settings = new HTTPServerSettings;
-	settings.port = 8099;
+	settings.port = 0;
 	settings.rejectConnectionPredicate = rejectDg;
 	settings.bindAddresses = ["::1", "127.0.0.1"];
 
 	auto l = listenHTTP(settings, &handleRequest);
 	scope (exit) l.stopListening();
+	immutable serverPort = l.bindAddresses.find!(addr => addr.family == AddressFamily.INET).front.port;
 
 	runTask({
 		bool got403, got403_multiple, got200;
 		scope (exit) exitEventLoop();
 
 		try {
-			requestHTTP("http://127.0.0.1:8099/",
+			requestHTTP("http://127.0.0.1:" ~ serverPort.to!string ~ "/",
 				(scope req) {
 					req.headers["X-Forwarded-For"] = xforward_addr;
 				},
@@ -43,7 +48,7 @@ void main()
 					got403 = (res.statusCode == HTTPStatus.forbidden);
 				}
 			);
-			requestHTTP("http://127.0.0.1:8099/",
+			requestHTTP("http://127.0.0.1:" ~ serverPort.to!string ~ "/",
 				(scope req) {
 					req.headers["X-Forwarded-For"] = xforward_addrs;
 				},
@@ -51,7 +56,7 @@ void main()
 					got403_multiple = (res.statusCode == HTTPStatus.forbidden);
 				}
 			);
-			requestHTTP("http://127.0.0.1:8099/", null,
+			requestHTTP("http://127.0.0.1:" ~ serverPort.to!string ~ "/", null,
 				(scope res) {
 					got200 = (res.statusCode == HTTPStatus.ok);
 				}

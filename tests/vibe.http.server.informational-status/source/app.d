@@ -4,6 +4,10 @@ import vibe.core.core : exitEventLoop, runApplication, runTask, sleep;
 import vibe.http.client;
 import vibe.http.server;
 import vibe.stream.operations : readAllUTF8;
+import std.algorithm : find;
+import std.range.primitives : front;
+import std.socket : AddressFamily;
+import std.conv : to;
 
 void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
@@ -18,17 +22,18 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
 void main()
 {
 	auto settings = new HTTPServerSettings;
-	settings.port = 8099;
+	settings.port = 0;
 	settings.bindAddresses = ["::1", "127.0.0.1"];
 
 	auto l = listenHTTP(settings, &handleRequest);
 	scope (exit) l.stopListening();
+	immutable serverPort = l.bindAddresses.find!(addr => addr.family == AddressFamily.INET).front.port;
 
 	runTask({
 		bool got102, got200;
 		scope (exit) exitEventLoop();
 
-		try requestHTTP("http://127.0.0.1:8099/", null,
+		try requestHTTP("http://127.0.0.1:" ~ serverPort.to!string ~ "/", null,
 			(scope res) {
 				if (res.statusCode == HTTPStatus.processing) {
 					assert(!got200, "Status 200 received first");

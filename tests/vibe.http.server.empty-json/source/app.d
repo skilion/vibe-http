@@ -11,13 +11,13 @@ void main()
 	auto s1 = new HTTPServerSettings;
 	s1.options &= ~HTTPServerOption.errorStackTraces;
 	s1.bindAddresses = ["127.0.0.1"];
-	s1.port = 11721;
-	listenHTTP(s1, &handler);
+	s1.port = 0;
+	auto l = listenHTTP(s1, &handler);
 
 	runTask({
 		scope (exit) exitEventLoop();
 		try {
-			auto req = requestHTTP("http://127.0.0.1:" ~ s1.port.to!string);
+			auto req = requestHTTP("http://127.0.0.1:" ~ l.bindAddresses[0].port.to!string);
 			assert(req.bodyReader.readAllUTF8 == "JSON: null - World!\r\n");
 		} catch (Exception e) {
 			assert(false, e.msg);
